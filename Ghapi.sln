@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31911.196
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ghapi", "Ghapi\Ghapi.csproj", "{B58BB915-C20F-42A5-A008-17830C044F3A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ghapi", "Ghapi\Ghapi.csproj", "{B58BB915-C20F-42A5-A008-17830C044F3A}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "GhapiInstaller", "GhapiInstaller\GhapiInstaller.vdproj", "{96F027F5-D130-4E22-A2D3-9017E43D303F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,8 @@ Global
 		{B58BB915-C20F-42A5-A008-17830C044F3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B58BB915-C20F-42A5-A008-17830C044F3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B58BB915-C20F-42A5-A008-17830C044F3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96F027F5-D130-4E22-A2D3-9017E43D303F}.Debug|Any CPU.ActiveCfg = Debug
+		{96F027F5-D130-4E22-A2D3-9017E43D303F}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
