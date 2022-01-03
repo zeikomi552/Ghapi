@@ -3,3 +3,6 @@
 ################################################################################
 
 /Ghapi/bin
+/Ghapi/obj
+/Ghapi/Properties/launchSettings.json
+/.vs/Ghapi
