@@ -40,6 +40,12 @@ namespace Ghapi.Models.GitHub
         public string FileName { get; set; }
 
         /// <summary>
+        /// ファイルタイプ markdown html csv
+        /// </summary>
+        [EndpointParam("-ftype")] 
+        public string FileType { get; set; }
+
+        /// <summary>
         /// 検索開始日
         /// </summary>
         [EndpointParam("-fromdate")]
@@ -50,6 +56,12 @@ namespace Ghapi.Models.GitHub
         /// </summary>
         [EndpointParam("-todate")]
         public string ToDate { get; set; }
+
+        /// <summary>
+        /// ページ数最大値
+        /// </summary>
+        [EndpointParam("-pagemax")]
+        public string PageMax { get; set; }
 
     }
 }

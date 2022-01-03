@@ -86,7 +86,7 @@ namespace Ghapi.Models.GitHub
         /// <summary>
         /// 検索結果
         /// </summary>
-        static SearchRepositoryResult GitHubResult { get; set; }
+        static List<SearchRepositoryResult> GitHubResult { get; set; } = new List<SearchRepositoryResult>();
 
         /// <summary>
         /// 検索言語
@@ -139,8 +139,10 @@ namespace Ghapi.Models.GitHub
             }
 
 #pragma warning restore CS0618 // 型またはメンバーが旧型式です
-            GitHubResult = await client.Search.SearchRepo(request);
+            var tmp = await client.Search.SearchRepo(request);
 
+            // リストに結果を追加
+            GitHubResult.Add(tmp);
         }
 
         /// <summary>
@@ -152,44 +154,103 @@ namespace Ghapi.Models.GitHub
             try
             {
                 string lang = GhapiArgs.CommandOptions.Language;
-                bool is_all = string.IsNullOrWhiteSpace(lang);
                 string from_date_str = GhapiArgs.CommandOptions.FromDate;
                 string to_date_str = GhapiArgs.CommandOptions.ToDate;
 
                 DateTime from_date = DateTime.TryParse(from_date_str, out from_date) ? from_date : new DateTime(1970, 1, 1);
                 DateTime to_date = DateTime.TryParse(to_date_str, out to_date) ? to_date : new DateTime(2970, 1, 1);
 
-                foreach (Language value in Enum.GetValues(typeof(Language)))
+                string ftype = "html";
+
+                // ファイルタイプの確認
+                if (!string.IsNullOrEmpty(GhapiArgs.CommandOptions.FileType))
+                    ftype = GhapiArgs.CommandOptions.FileType;
+
+                // 言語指定されていない場合は全言語対象
+                // 言語指定されている場合は指定言語を使用して検索
+                SearchLanguage = null;
+                if (!string.IsNullOrWhiteSpace(lang))   // 言語指定されていないので全言語とみなす
                 {
-                    // 言語指定されていない場合は全言語対象
-                    // 言語指定されている場合は指定言語を使用して検索
-                    if (is_all || lang.ToLower().Equals(value.ToString().ToLower()))
+                    // 指定された言語がGitHubの該当する言語かを確認する
+                    foreach (Language value in Enum.GetValues(typeof(Language)))
                     {
-                        // 検索言語
-                        SearchLanguage = is_all ? null : value;
-
-                        // GitHubランキングの検索
-                        SearchSub(SearchLanguage, from_date, to_date, 1).Wait();
-
-                        // マークダウンの取得
-                        string markdown = GetMarkdown();
-
-                        Markdig.MarkdownPipeline markdownPipeline = new MarkdownPipelineBuilder().UsePipeTables().Build();
-                        // Markdown → HTMLへの変換
-                        string html = Markdown.ToHtml(markdown.ToString(), markdownPipeline);
-
-                        //Console.WriteLine(markdown);
-
-                        if (!string.IsNullOrEmpty(GhapiArgs.CommandOptions.FileName))
+                        if (lang.ToLower().Equals(value.ToString().ToLower()))
                         {
-                            // ディレクトリの作成処理
-                            PathManager.CreateCurrentDirectory(GhapiArgs.CommandOptions.FileName);
-                            File.WriteAllText(GhapiArgs.CommandOptions.FileName + ".md", markdown);
-                            File.WriteAllText(GhapiArgs.CommandOptions.FileName + ".html", html);
+                            SearchLanguage = value; // 開発言語をセット
+                            break;
                         }
-
-                        break;
                     }
+
+                    // 言語指定されているが存在しない言語
+                    if (!SearchLanguage.HasValue)
+                    {
+                        Console.WriteLine("指定された開発言語が見つかりませんでした。");
+                        return;
+                    }
+                }
+
+                // ページ数最大値を取得
+                int pagemax = int.TryParse(GhapiArgs.CommandOptions.PageMax, out pagemax) ? pagemax : 1;
+
+                // ページ数を満たすまでループ
+                for (int page = 1; page <= pagemax; page++)
+                {
+                    Console.WriteLine($"開発言語:{SearchLanguage} 開始日:{from_date} 終了日:{to_date} ページ番号{page}で検索中");
+                    // GitHubランキングの検索
+                    SearchSub(SearchLanguage, from_date, to_date, page).Wait();
+
+                    if(GitHubResult.Any())
+                    {
+                        // トータル数を超えた場合
+                        if (GitHubResult.ElementAt(0).TotalCount < page * 100)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                // 出力ファイル名を確認
+                if (!string.IsNullOrEmpty(GhapiArgs.CommandOptions.FileName))
+                {
+                    // ディレクトリの作成処理
+                    PathManager.CreateCurrentDirectory(GhapiArgs.CommandOptions.FileName);
+
+                    // ファイルタイプ
+                    switch (ftype)
+                    {
+                        case "html":
+                        default:
+                            {
+                                // マークダウンの取得
+                                string markdown = GetMarkdown();
+                                Markdig.MarkdownPipeline markdownPipeline = new MarkdownPipelineBuilder().UsePipeTables().Build();
+                                // Markdown → HTMLへの変換
+                                string html = Markdown.ToHtml(markdown.ToString(), markdownPipeline);
+                                File.WriteAllText(GhapiArgs.CommandOptions.FileName, html);
+                                break;
+                            }
+                        case "markdown":
+                            {
+                                // マークダウンの取得
+                                string markdown = GetMarkdown();
+                                File.WriteAllText(GhapiArgs.CommandOptions.FileName, markdown);
+                                break;
+                            }
+                        case "csv":
+                            {
+                                // CSVで出力
+                                string csv = GetCSV();
+                                // SJISで出力
+                                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+                                File.WriteAllText(GhapiArgs.CommandOptions.FileName, csv, Encoding.GetEncoding("shift_jis"));
+                                break;
+                            }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("ファイル名の指定は必須です");
+                    return;
                 }
             }
             catch (Exception e)
@@ -213,6 +274,7 @@ namespace Ghapi.Models.GitHub
             DateTime? to_date = DateTime.TryParse(to_date_str, out tmp) ? tmp : null;
 
             StringBuilder markdown = new StringBuilder();
+
             markdown.AppendLine($"## GitHubサーベイ 調査日{DateTime.Today.ToString("yyyy/MM/dd")}");
             markdown.AppendLine($"### 検索条件");
             string from_text = from_date.HasValue ? from_date.Value.ToString("yyyy/MM/dd") : "指定なし";
@@ -232,24 +294,61 @@ namespace Ghapi.Models.GitHub
             markdown.AppendLine($"|----|----|----|----|");
 
             int rank = 1;
-            foreach (var repo in GitHubResult.Items)
+            foreach (var result in GitHubResult)
             {
-                string description = repo.Description.EmptyToText("-").CutText(50).Replace("|", "\\/");
-                string language = repo.Language.EmptyToText("-").CutText(20);
+                // 要素をテキストに変換していく
+                foreach (var repo in result.Items)
+                {
+                    string description = repo.Description.EmptyToText("-").CutText(50).Replace("|", "\\/");
+                    string language = repo.Language.EmptyToText("-").CutText(20);
 
-                string homepage_url = !string.IsNullOrWhiteSpace(repo.Homepage)
-                    && (repo.Homepage.ToLower().Contains("http://") || repo.Homepage.ToLower().Contains("https://"))
-                    ? $" [[Home Page]({repo.Homepage})]" : string.Empty;
+                    string homepage_url = !string.IsNullOrWhiteSpace(repo.Homepage)
+                        && (repo.Homepage.ToLower().Contains("http://") || repo.Homepage.ToLower().Contains("https://"))
+                        ? $" [[Home Page]({repo.Homepage})]" : string.Empty;
 
-                // 行情報の作成
-                markdown.AppendLine($"|<center>{repo.StargazersCount}<br>({rank++}位)</center>|" +
-                    $"[{repo.FullName}]({repo.HtmlUrl}){homepage_url}<br>{description}|" +
-                    $"{language}|" +
-                    $"[[google](https://www.google.com/search?q={repo.Name})] " +
-                    $"[[Qiita](https://qiita.com/search?q={repo.Name})]|");
+                    // 行情報の作成
+                    markdown.AppendLine($"|<center>{repo.StargazersCount}<br>({rank++}位)</center>|" +
+                        $"[{repo.FullName}]({repo.HtmlUrl}){homepage_url}<br>{description}|" +
+                        $"{language}|" +
+                        $"[[google](https://www.google.com/search?q={repo.Name})] " +
+                        $"[[Qiita](https://qiita.com/search?q={repo.Name})]|");
+                }
             }
-
             return markdown.ToString();
         }
+
+        #region CSVデータの作成処理
+        /// <summary>
+        /// CSVデータの作成処理
+        /// </summary>
+        /// <returns>CSVデータ</returns>
+        private static string GetCSV()
+        {
+            string from_date_str = GhapiArgs.CommandOptions.FromDate;
+            string to_date_str = GhapiArgs.CommandOptions.ToDate;
+
+            StringBuilder csvtext = new StringBuilder();
+
+            // ヘッダの作成
+            csvtext.AppendLine("FullName, description, HtmlUrl, rank, StargazersCount,Homepage, Language, search start, search end");
+
+            int rank = 1;
+            foreach (var result in GitHubResult)
+            {
+                // データ数分ループする
+                foreach (var repo in result.Items)
+                {
+                    // コンテンツの作成
+                    csvtext.AppendLine($"{repo.FullName},{CSVUtil.EscapeText(repo.Description)},{repo.HtmlUrl},{rank}," +
+                        $"{repo.StargazersCount},{repo.Homepage},{repo.Language}, " +
+                        $"{CSVUtil.EscapeText(from_date_str)},{CSVUtil.EscapeText(to_date_str)}");
+                    rank++;
+                }
+            }
+
+            // CSVデータの返却
+            return csvtext.ToString();
+        }
+        #endregion
     }
 }
