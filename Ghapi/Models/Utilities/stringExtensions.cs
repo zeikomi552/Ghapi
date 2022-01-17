@@ -32,5 +32,53 @@ namespace Ghapi.Models.Utilities
             }
 
         }
+
+        public static string EscapeText(this string str)
+        {
+            if (!string.IsNullOrEmpty(str))
+            {
+                Encoding Utf8Encoder = Encoding.GetEncoding(
+                    "UTF-8",
+                    new EncoderReplacementFallback(string.Empty),
+                    new DecoderExceptionFallback()
+                );
+
+                var utf8Text = Utf8Encoder.GetString(Utf8Encoder.GetBytes(str));
+
+                return utf8Text.Replace("|", "\\/");
+                //return str.Replace("<", "&lt;")
+                //    .Replace(">", "&gt;")
+                //    .Replace("'", "&#39;")
+                //    .Replace("\"", "&quot;")
+                //    .Replace("&", "&amp;")
+                //    .Replace(" ", "&nbsp;")
+                //    .Replace("\\", "&yen;")
+                //    .Replace("¢", "&cent;")
+                //    .Replace("£", "&pound;")
+                //    .Replace("¦", "&brvbar;")
+                //    .Replace("©", "&copy;")
+                //    .Replace("®", "&reg;")
+                //    .Replace("°", "&deg;")
+                //    .Replace("±", "&plusmn;")
+                //    .Replace("×", "&times;")
+                //    .Replace("÷", "&divide;")
+                //    .Replace("µ", "&micro;")
+                //    .Replace("·", "&middot;")
+                //    .Replace("§", "&sect;")
+                //    .Replace("«", "&laquo;")
+                //    .Replace("»", "&raquo;")
+                //    .Replace("²", "&sup2;")
+                //    .Replace("³", "&sup3;")
+                //    .Replace("¹", "&sup1;")
+                //    .Replace("¼", "&frac14;")
+                //    .Replace("½", "&frac12;")
+                //    .Replace("¾", "&frac34;");
+            }
+            else
+            {
+                return string.Empty;
+            }
+
+        }
     }
 }

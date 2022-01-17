@@ -1,4 +1,5 @@
-﻿using Ghapi.Models.Config;
+﻿using ClosedXML.Excel;
+using Ghapi.Models.Config;
 using Ghapi.Models.Utilities;
 using Markdig;
 using Octokit;
@@ -83,15 +84,19 @@ namespace Ghapi.Models.GitHub
         }
         #endregion
 
+        #region 検索結果
         /// <summary>
         /// 検索結果
         /// </summary>
         static List<SearchRepositoryResult> GitHubResult { get; set; } = new List<SearchRepositoryResult>();
+        #endregion
 
+        #region 検索言語
         /// <summary>
         /// 検索言語
         /// </summary>
         static Language? SearchLanguage { get; set; }
+        #endregion
 
         #region 検索処理
         /// <summary>
@@ -260,6 +265,51 @@ namespace Ghapi.Models.GitHub
         }
         #endregion
 
+        #region 除外するURLのリストを取得する
+        /// <summary>
+        /// 除外するURLのリストを取得する
+        /// </summary>
+        /// <param name="path">Excelファイルパス</param>
+        /// <returns>URLのリスト</returns>
+        private static List<string> GetExcludeURL(string path)
+        {
+            try
+            {
+                List<string> urls = new List<string>();
+                // 読み取り専用で開く
+                using (FileStream fs = new FileStream(path, System.IO.FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    // Bookの操作
+                    using (XLWorkbook book = new XLWorkbook(fs, XLEventTracking.Disabled))
+                    {
+                        // シートの一番目を取得
+                        var sheet = book.Worksheets.ElementAt(0);
+                        int row = 2;
+                        // ループ
+                        while (true)
+                        {
+
+                            string url = sheet.Cell(row, 1).Value != null ? sheet.Cell(row, 1).Value.ToString() : string.Empty; // メッセージの取得
+
+                            // 空白なら処理を停止
+                            if (string.IsNullOrWhiteSpace(url)) { break; }
+                            // 除外するURLを追加する
+                            else { urls.Add(url); }
+
+                            row++;  // 行をインクリメント
+                        }
+                    }
+                }
+                return urls;
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+        #endregion
+
+        #region GitHubの記事取得処理
         /// <summary>
         /// GitHubの記事取得処理
         /// </summary>
@@ -268,6 +318,9 @@ namespace Ghapi.Models.GitHub
         {
             string from_date_str = GhapiArgs.CommandOptions.FromDate;
             string to_date_str = GhapiArgs.CommandOptions.ToDate;
+            string exclusion = GhapiArgs.CommandOptions.Exclusion;
+
+            var list = GetExcludeURL(exclusion);
 
             DateTime tmp;
             DateTime? from_date = DateTime.TryParse(from_date_str, out tmp) ? tmp : null;
@@ -299,23 +352,25 @@ namespace Ghapi.Models.GitHub
                 // 要素をテキストに変換していく
                 foreach (var repo in result.Items)
                 {
-                    string description = repo.Description.EmptyToText("-").CutText(50).Replace("|", "\\/");
+                    string description = repo.Description.EmptyToText("-").CutText(50).EscapeText();
                     string language = repo.Language.EmptyToText("-").CutText(20);
 
-                    string homepage_url = !string.IsNullOrWhiteSpace(repo.Homepage)
-                        && (repo.Homepage.ToLower().Contains("http://") || repo.Homepage.ToLower().Contains("https://"))
+                    string homepage_url = !string.IsNullOrWhiteSpace(repo.Homepage)                                         // ホームページがセットされているか確認
+                        && (repo.Homepage.ToLower().Contains("http://") || repo.Homepage.ToLower().Contains("https://"))    // http://もしくはhttps://ではじまるかを確認
+                        && !(from x in list where x.ToLower().Contains(repo.Homepage.ToLower()) select x).Any()              // 除外リストに含まれていないことを確認
                         ? $" [[Home Page]({repo.Homepage})]" : string.Empty;
 
                     // 行情報の作成
                     markdown.AppendLine($"|<center>{repo.StargazersCount}<br>({rank++}位)</center>|" +
                         $"[{repo.FullName}]({repo.HtmlUrl}){homepage_url}<br>{description}|" +
                         $"{language}|" +
-                        $"[[google](https://www.google.com/search?q={repo.Name})] " +
+                        $"[[Google](https://www.google.com/search?q={repo.Name})] " +
                         $"[[Qiita](https://qiita.com/search?q={repo.Name})]|");
                 }
             }
             return markdown.ToString();
         }
+        #endregion
 
         #region CSVデータの作成処理
         /// <summary>

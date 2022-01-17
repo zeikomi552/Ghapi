@@ -63,5 +63,11 @@ namespace Ghapi.Models.GitHub
         [EndpointParam("-pagemax")]
         public string PageMax { get; set; }
 
+        /// <summary>
+        /// 除外用のExcelファイルパス
+        /// </summary>
+        [EndpointParam("-exclusion")]
+        public string Exclusion { get; set; }
+
     }
 }

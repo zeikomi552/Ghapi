@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,11 +6,12 @@
     <Authors>Zeikomi552</Authors>
     <Company>Zeikomi</Company>
     <AssemblyVersion>0.0.1.0</AssemblyVersion>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Description></Description>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.95.4" />
     <PackageReference Include="log4net" Version="2.0.14" />
     <PackageReference Include="Markdig" Version="0.26.0" />
     <PackageReference Include="Octokit" Version="0.50.0" />
