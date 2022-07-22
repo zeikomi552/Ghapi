@@ -69,5 +69,6 @@ namespace Ghapi.Models.GitHub
         [EndpointParam("-exclusion")]
         public string Exclusion { get; set; }
 
+        
     }
 }

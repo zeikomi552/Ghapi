@@ -128,7 +128,7 @@ namespace Ghapi.Models.GitHub
                     //start.HasValue ? end.Value : new DateTime(2970, 1, 1));
 
             // スターの数
-            request.Stars = new Octokit.Range(1, int.MaxValue);
+            request.Stars = new Octokit.Range(100, int.MaxValue);
 
             // 読み込むページ
             request.Page = page_no;
@@ -352,7 +352,7 @@ namespace Ghapi.Models.GitHub
                 // 要素をテキストに変換していく
                 foreach (var repo in result.Items)
                 {
-                    string description = repo.Description.EmptyToText("-").CutText(50).EscapeText();
+                    string description = repo.Description.EmptyToText("-").CutText(300).EscapeText();
                     string language = repo.Language.EmptyToText("-").CutText(20);
 
                     string homepage_url = !string.IsNullOrWhiteSpace(repo.Homepage)                                         // ホームページがセットされているか確認
